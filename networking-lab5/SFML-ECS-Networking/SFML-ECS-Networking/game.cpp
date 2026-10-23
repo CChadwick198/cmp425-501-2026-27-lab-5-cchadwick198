@@ -93,6 +93,13 @@ void Game::AddTank(std::string body_tex, std::string barrel_tex, sf::Vector2f po
 	tanks.push_back(std::move(tank));
 }
 
+void Game::RemoveTank(size_t tank_index)
+{
+	if (tank_index >= tanks.size()) { return; }
+
+	tanks.erase(std::next(tanks.begin(), tank_index));
+}
+
 TankMessage Game::GetNetworkUpdate()
 {
 	// This is hardcoded for the local tan for Player.

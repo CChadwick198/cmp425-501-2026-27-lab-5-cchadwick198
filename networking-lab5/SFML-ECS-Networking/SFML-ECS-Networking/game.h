@@ -13,6 +13,9 @@ public:
 	void NetworkUpdate(float dt, TankMessage data);
 	void Render(sf::RenderWindow &window);
 	void AddTank(std::string body_tex, std::string barrel_tex, sf::Vector2f position);
+
+	void RemoveTank(size_t tank_index);
+
 	TankMessage GetNetworkUpdate();
 
 private:

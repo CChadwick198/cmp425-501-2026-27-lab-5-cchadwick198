@@ -134,8 +134,19 @@ int main() {
 			if (selector.wait(sf::seconds(0.f))) {
 				// If at least one of the sockets is ready to receive, check which ones are ready.
 				for (int i = 0; i < player_connections.size(); i++) {
-					if (selector.isReady(*player_connections.at(i).socket))
+					if (player_connections.at(i).state == Disconnected)
+					{
+						// Maybe do some other stuff here.
+						// WHY DOES THIS WORK HERE AND NOT BELOW THE ISREADY CHECK?!
+						Utils::printMsg("A Player Has Disconnected", error);
+					}
+					else if (selector.isReady(*player_connections.at(i).socket))
 						player_connections.at(i).state = Ready;
+					//else if (player_connections.at(i).state == Disconnected)
+					//{
+					//	// Maybe do some other stuff here.
+					//	Utils::printMsg("A Player Has Disconnected", error);
+					//}
 					else
 						player_connections.at(i).state = NotReady;
 					// FIXME: We may not reset the state to NotReady if selector doesn't detect any
@@ -164,6 +175,9 @@ int main() {
 						packet >> message.x >> message.y;
 						// Use the message data to update the game.
 						game.NetworkUpdate(dt, message);
+
+						// Set player connection state to "NotReady" after completion.
+						/*player_connections.at(i).state = NotReady;*/
 					}
 					else if (status == sf::Socket::Status::Disconnected) {
 						Utils::printMsg("Player disconnected: "
@@ -174,11 +188,25 @@ int main() {
 						// For now just set the connection state to Disconnected. 
 						// FIXME: But we should also remove the inactive connection from the vector and remove the tank from the game.
 						player_connections.at(i).state = Disconnected;
+						/*player_connections.erase(std::next(player_connections.begin(), i));*/
 					}
+				}
+				else if (player_connections.at(i).state == Disconnected)
+				{
+					Utils::printMsg("Player disconnected: "
+						+ player_connections.at(i).socket->getRemoteAddress().value().toString()
+						+ ":"
+						+ std::to_string(player_connections.at(i).socket->getRemotePort()), error);
+
+					player_connections.at(i).socket->disconnect();
+					selector.remove(*player_connections.at(i).socket);
+
+					player_connections.erase(std::next(player_connections.begin(), i));
+					game.RemoveTank(i);
 				}
 			}
 		}
-		else 
+		else // Player(s)
 		{
 			// If we're not connected to the observer, try to connect.
 			// We want the socket in non-blocking mode, so if the connection fails, we just try again next time.
