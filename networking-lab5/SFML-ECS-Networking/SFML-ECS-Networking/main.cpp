@@ -134,21 +134,14 @@ int main() {
 			if (selector.wait(sf::seconds(0.f))) {
 				// If at least one of the sockets is ready to receive, check which ones are ready.
 				for (int i = 0; i < player_connections.size(); i++) {
-					if (player_connections.at(i).state == Disconnected)
-					{
-						// Maybe do some other stuff here.
-						// WHY DOES THIS WORK HERE AND NOT BELOW THE ISREADY CHECK?!
-						Utils::printMsg("A Player Has Disconnected", error);
-					}
-					else if (selector.isReady(*player_connections.at(i).socket))
+					if (selector.isReady(*player_connections.at(i).socket))
 						player_connections.at(i).state = Ready;
-					//else if (player_connections.at(i).state == Disconnected)
-					//{
-					//	// Maybe do some other stuff here.
-					//	Utils::printMsg("A Player Has Disconnected", error);
-					//}
 					else
 						player_connections.at(i).state = NotReady;
+
+						Utils::printMsg("Player at: "
+							+ std::to_string(i)
+							+ "Not Ready", warning);
 					// FIXME: We may not reset the state to NotReady if selector doesn't detect any
 					// changes on any of the sockets (outer if statement). Ensure you set it back to
 					// NotReady when you finished reading from the socket.
@@ -161,7 +154,9 @@ int main() {
 				// FIXME: Recieve can fail, check for errors.
 				if (player_connections.at(i).state == Ready) {
 					sf::Socket::Status status = player_connections.at(i).socket->receive(packet);
-					if (status == sf::Socket::Status::Done) {
+
+					if (status == sf::Socket::Status::Done)
+					{
 						Utils::printMsg("Recieved message from: "
 							+ player_connections.at(i).socket->getRemoteAddress().value().toString()
 							+ ":"
@@ -179,7 +174,12 @@ int main() {
 						// Set player connection state to "NotReady" after completion.
 						/*player_connections.at(i).state = NotReady;*/
 					}
-					else if (status == sf::Socket::Status::Disconnected) {
+					else if (status == sf::Socket::Status::Partial)
+					{
+						/* Do something here at some point. */
+					}
+					else if (status == sf::Socket::Status::Disconnected)
+					{
 						Utils::printMsg("Player disconnected: "
 							+ player_connections.at(i).socket->getRemoteAddress().value().toString()
 							+ ":"
@@ -188,21 +188,15 @@ int main() {
 						// For now just set the connection state to Disconnected. 
 						// FIXME: But we should also remove the inactive connection from the vector and remove the tank from the game.
 						player_connections.at(i).state = Disconnected;
-						/*player_connections.erase(std::next(player_connections.begin(), i));*/
+						selector.remove(*player_connections.at(i).socket);
+						player_connections.at(i).socket->disconnect();
+
+						game.RemoveTank(i);
+						player_connections.erase(std::next(player_connections.begin(), i));
+
+						i--; /* Make sure we check the connection that has been moved to this index */
+
 					}
-				}
-				else if (player_connections.at(i).state == Disconnected)
-				{
-					Utils::printMsg("Player disconnected: "
-						+ player_connections.at(i).socket->getRemoteAddress().value().toString()
-						+ ":"
-						+ std::to_string(player_connections.at(i).socket->getRemotePort()), error);
-
-					player_connections.at(i).socket->disconnect();
-					selector.remove(*player_connections.at(i).socket);
-
-					player_connections.erase(std::next(player_connections.begin(), i));
-					game.RemoveTank(i);
 				}
 			}
 		}
